@@ -504,9 +504,11 @@ export default function App() {
             <div className="flex flex-col px-3 md:px-8 max-w-lg mx-auto w-full">
               <div className="flex justify-between items-center mb-3">
                 <button onClick={prevTerm} disabled={activeTermIndex === 0} className="p-2 bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 active:scale-95 transition-all touch-manipulation"><ChevronLeft className="w-5 h-5" /></button>
-                <div className="text-center flex-1">{/* Term label logic could be added here if needed */}</div>
-                <button onClick={nextTerm} disabled={activeTermIndex === activeKeys.length - 1} className="p-2 bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 active:scale-95 transition-all touch-manipulation"><ChevronRight className="w-5 h-5" /></button>
-              </div>
+<div className="text-center flex-1 flex items-center justify-center">
+  {getTermLabel(activeKey)}
+</div>
+<button onClick={nextTerm} disabled={activeTermIndex === activeKeys.length - 1} className="p-2 bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 active:scale-95 transition-all touch-manipulation"><ChevronRight className="w-5 h-5" /></button>
+ </div>
               {mode === 'complex' ? (
                 <>
                   <div className="flex justify-between items-center gap-2 px-2 mb-2 bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50">
