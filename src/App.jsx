@@ -3,6 +3,10 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Play, ArrowRight, Activity, Trophy, RefreshCw, ChevronLeft, ChevronRight, Plus, Minus, Target, ChevronDown, X, Lock } from 'lucide-react';
 
 export default function App() {
+  const [mode, setMode] = useState('complex');
+  const [levels, setLevels] = useState({ real: 1, complex: 1 });
+  const [maxUnlockedLevels, setMaxUnlockedLevels] = useState({ real: 1, complex: 1 });
+
   const [mode, setMode] = useState('complex'); // 'complex' or 'real'
   
   // Independent level tracking for both modes
