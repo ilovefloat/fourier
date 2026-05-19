@@ -2,32 +2,42 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Play, ArrowRight, Activity, Trophy, RefreshCw, ChevronLeft, ChevronRight, Plus, Minus, Target, ChevronDown, X, Lock } from 'lucide-react';
 
 export default function App() {
-  const [mode, setMode] = useState('complex'); 
+  const [mode, setMode] = useState('complex'); // 'complex' or 'real'
+  
+  // Independent level tracking for both modes
   const [levels, setLevels] = useState({ real: 1, complex: 1 });
   const [maxUnlockedLevels, setMaxUnlockedLevels] = useState({ real: 1, complex: 1 });
+  
+  // States hold data for BOTH modes simultaneously
   const [targetCoeffs, setTargetCoeffs] = useState({ real: {}, complex: {} });
   const [playerCoeffs, setPlayerCoeffs] = useState({ real: {}, complex: {} });
+  
   const [showNext, setShowNext] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [activeTermIndex, setActiveTermIndex] = useState(0);
   const [isLevelSelectorOpen, setIsLevelSelectorOpen] = useState(false);
 
+  // FIX: Reset index whenever mode changes to prevent out-of-bounds crashes
   useEffect(() => {
     setActiveTermIndex(0);
   }, [mode]);
 
+  // Constants for Graphing
   const GRAPH_SIZE = 1000;
   const CENTER = GRAPH_SIZE / 2;
   const PADDING = 60;
 
+  // High-Performance Animation Refs
   const vectorArmsRef = useRef(null);
   const vectorTipRef = useRef(null);
   const targetTipRef = useRef(null);
   const requestRef = useRef();
 
+  // Active level for the currently selected mode
   const activeLevel = levels[mode];
   const maxUnlocked = maxUnlockedLevels[mode];
   
+  // Sequence of keys based on current Mode and its Level
   const activeKeys = useMemo(() => {
     if (mode === 'complex') {
       const ns = [0];
@@ -45,6 +55,7 @@ export default function App() {
     }
   }, [activeLevel, mode]);
 
+  // Generate a new level for a SPECIFIC mode
   const initMode = useCallback((m, lvl) => {
     const randCoeff = () => Math.round((Math.floor(Math.random() * 41) - 20)) / 10; 
     let tMode = {}; 
@@ -59,6 +70,7 @@ export default function App() {
       ns.forEach((n, idx) => {
         tMode[n] = { r: randCoeff(), i: randCoeff() };
         pMode[n] = { r: 0, i: 0 };
+        // Ensure highest frequency is non-zero
         if (idx === ns.length - 1 && tMode[n].r === 0 && tMode[n].i === 0) {
           tMode[n].r = Math.random() > 0.5 ? 1.0 : -1.0;
         }
@@ -72,18 +84,25 @@ export default function App() {
         pMode[`a${i}`] = 0;
         pMode[`b${i}`] = 0;
       }
+      // Ensure highest frequency is non-zero
       if (tMode[`a${lvl}`] === 0 && tMode[`b${lvl}`] === 0) {
         tMode[`a${lvl}`] = Math.random() > 0.5 ? 1.0 : -1.0;
       }
     }
 
+    // FIX: Reset index on initialization
     setActiveTermIndex(0);
+
     setTargetCoeffs(prev => ({ ...prev, [m]: tMode }));
     setPlayerCoeffs(prev => ({ ...prev, [m]: pMode }));
-    if (m === mode) setShowNext(false);
+    
+    // Only reset UI state if we are initializing the currently active mode
+    if (m === mode) {
+      setShowNext(false);
+    }
   }, [mode]);
 
-  // --- RESTORED: Label Logic ---
+  // Formatting utilities
   const getTermLabel = (key) => {
     if (mode === 'complex') {
       if (key === 0) return <span className="text-cyan-400 font-mono tracking-wider text-base md:text-lg">c₀ (DC)</span>;
@@ -104,16 +123,47 @@ export default function App() {
     }
   };
 
-  // ... [Keep all other existing logic below this point, starting from the useEffects] ...
+  const renderEquation = () => {
+    if (mode === 'complex') {
+      const N = Math.ceil(activeLevel / 2);
+      return (
+        <div className="flex items-center gap-1 text-emerald-300">
+          <span className="font-serif italic">f(t) = </span>
+          <span className="text-2xl relative top-0.5">Σ</span>
+          <div className="flex flex-col text-[8px] leading-[0.8] items-start">
+            <span>n={N}</span>
+            <span>n=-{N}</span>
+          </div>
+          <span className="ml-1">c<sub>n</sub> e<sup>nit</sup></span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center gap-1 text-emerald-300">
+          <span className="font-serif italic">f(t) = a<sub>0</sub> + </span>
+          <span className="text-2xl relative top-0.5">Σ</span>
+          <div className="flex flex-col text-[8px] leading-[0.8] items-start">
+            <span>n={activeLevel}</span>
+            <span>n=1</span>
+          </div>
+          <span className="ml-1">(a<sub>n</sub> cos(nt) + b<sub>n</sub> sin(nt))</span>
+        </div>
+      );
+    }
+  };
 
+  // --- INITIALIZATION AND PERSISTENCE ENGINE ---
   useEffect(() => {
     const savedLevels = localStorage.getItem('fourier_levels');
     const savedMax = localStorage.getItem('fourier_max_unlocked');
+
     if (savedLevels && savedMax) {
       const parsedLevels = JSON.parse(savedLevels);
       const parsedMax = JSON.parse(savedMax);
+      
       setLevels(parsedLevels);
       setMaxUnlockedLevels(parsedMax);
+      
       initMode('real', parsedLevels.real);
       initMode('complex', parsedLevels.complex);
     } else {
@@ -131,6 +181,7 @@ export default function App() {
     const tCoeffs = targetCoeffs[mode];
     const pCoeffs = playerCoeffs[mode];
     if (!tCoeffs || !pCoeffs || Object.keys(tCoeffs).length === 0) return 0;
+    
     let sumSq = 0;
     if (mode === 'complex') {
       for (const n of activeKeys) {
@@ -152,8 +203,12 @@ export default function App() {
 
   useEffect(() => {
     if (!hasStarted || !targetCoeffs[mode] || Object.keys(targetCoeffs[mode]).length === 0) return;
-    if (errorNorm < 0.01 && !showNext) setShowNext(true);
-    else if (errorNorm >= 0.01 && showNext) setShowNext(false);
+    
+    if (errorNorm < 0.01 && !showNext) {
+      setShowNext(true);
+    } else if (errorNorm >= 0.01 && showNext) {
+      setShowNext(false); 
+    }
   }, [errorNorm, showNext, hasStarted, targetCoeffs, mode]);
 
   const nextTerm = useCallback(() => setActiveTermIndex((prev) => Math.min(prev + 1, activeKeys.length - 1)), [activeKeys.length]);
@@ -196,6 +251,7 @@ export default function App() {
     const key = activeKeys[activeTermIndex];
     setPlayerCoeffs(prev => {
       const updatedMode = { ...prev[mode] };
+      
       if (mode === 'complex') {
         const current = updatedMode[key]?.[axisOrVal] || 0;
         let nextVal = Math.round((current + direction * 0.1) * 10) / 10;
@@ -207,6 +263,7 @@ export default function App() {
         nextVal = Math.max(-3, Math.min(3, nextVal));
         updatedMode[key] = nextVal;
       }
+      
       return { ...prev, [mode]: updatedMode };
     });
   };
@@ -221,6 +278,7 @@ export default function App() {
   const maxY = useMemo(() => {
     const tCoeffs = targetCoeffs[mode] || {};
     if (Object.keys(tCoeffs).length === 0) return 5;
+    
     if (mode === 'complex') {
       let max = 0;
       for (const n of activeKeys) {
@@ -243,6 +301,7 @@ export default function App() {
     if (!coeffs || Object.keys(coeffs).length === 0) return "";
     let path = "";
     const POINTS = 250;
+    
     if (mode === 'complex') {
       for (let p = 0; p <= POINTS; p++) {
         const t = (p / POINTS) * 2 * Math.PI;
@@ -295,14 +354,17 @@ export default function App() {
 
   useEffect(() => {
     if (!hasStarted) return;
+    
     const animate = (time) => {
       const currentMode = modeRef.current;
       const t = (time * 0.0015) % (2 * Math.PI); 
       const pCoeffs = playerCoeffsRef.current[currentMode] || {};
       const tCoeffs = targetCoeffsRef.current[currentMode] || {};
       const keys = activeKeysRef.current;
+      
       if (currentMode === 'complex') {
         const scale = scaleRef.current;
+        
         let px = 0, py = 0;
         let armsPath = `M ${CENTER} ${CENTER} `;
         for (const n of keys) {
@@ -314,10 +376,12 @@ export default function App() {
           armsPath += `L ${sx.toFixed(2)} ${sy.toFixed(2)} `;
         }
         if (vectorArmsRef.current) vectorArmsRef.current.setAttribute('d', armsPath);
+        
         if (vectorTipRef.current) {
           vectorTipRef.current.setAttribute('cx', (CENTER + px * scale).toFixed(2));
           vectorTipRef.current.setAttribute('cy', (CENTER - py * scale).toFixed(2));
         }
+
         let tx = 0, ty = 0;
         for (const n of keys) {
           const c = tCoeffs[n] || { r: 0, i: 0 };
@@ -328,17 +392,21 @@ export default function App() {
           targetTipRef.current.setAttribute('cx', (CENTER + tx * scale).toFixed(2));
           targetTipRef.current.setAttribute('cy', (CENTER - ty * scale).toFixed(2));
         }
+        
       } else {
         const maxV = maxYRef.current;
         const currentLevel = levelsRef.current['real'];
         const xPos = PADDING + (t / (2 * Math.PI)) * (GRAPH_SIZE - 2 * PADDING);
+        
         let py = pCoeffs.a0 || 0;
         let ty = tCoeffs.a0 || 0;
         for (let i = 1; i <= currentLevel; i++) {
           py += (pCoeffs[`a${i}`] || 0) * Math.cos(i * t) + (pCoeffs[`b${i}`] || 0) * Math.sin(i * t);
           ty += (tCoeffs[`a${i}`] || 0) * Math.cos(i * t) + (tCoeffs[`b${i}`] || 0) * Math.sin(i * t);
         }
+
         const mapY = (val) => CENTER - (val / maxV) * (CENTER - PADDING);
+        
         if (vectorTipRef.current) {
           vectorTipRef.current.setAttribute('cx', xPos.toFixed(2));
           vectorTipRef.current.setAttribute('cy', mapY(py).toFixed(2));
@@ -348,40 +416,13 @@ export default function App() {
           targetTipRef.current.setAttribute('cy', mapY(ty).toFixed(2));
         }
       }
+
       requestRef.current = requestAnimationFrame(animate);
     };
+    
     requestRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(requestRef.current);
   }, [hasStarted]);
-
-  const renderEquation = () => {
-    if (mode === 'complex') {
-      const N = Math.ceil(activeLevel / 2);
-      return (
-        <div className="flex items-center gap-1 text-emerald-300">
-          <span className="font-serif italic">f(t) = </span>
-          <span className="text-2xl relative top-0.5">Σ</span>
-          <div className="flex flex-col text-[8px] leading-[0.8] items-start">
-            <span>n={N}</span>
-            <span>n=-{N}</span>
-          </div>
-          <span className="ml-1">c<sub>n</sub> e<sup>nit</sup></span>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex items-center gap-1 text-emerald-300">
-          <span className="font-serif italic">f(t) = a<sub>0</sub> + </span>
-          <span className="text-2xl relative top-0.5">Σ</span>
-          <div className="flex flex-col text-[8px] leading-[0.8] items-start">
-            <span>n={activeLevel}</span>
-            <span>n=1</span>
-          </div>
-          <span className="ml-1">(a<sub>n</sub> cos(nt) + b<sub>n</sub> sin(nt))</span>
-        </div>
-      );
-    }
-  };
 
   const getErrorColor = (err) => {
     if (err < 0.05) return 'text-emerald-400';
@@ -394,28 +435,48 @@ export default function App() {
       <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center text-white p-6">
         <div className="max-w-xl text-center space-y-8 bg-slate-900 p-8 md:p-12 rounded-3xl border border-slate-800 shadow-2xl">
           <Activity className="w-16 h-16 text-cyan-400 mx-auto animate-pulse" />
-          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">Fourier Rush</h1>
-          <p className="text-slate-400 text-base md:text-lg leading-relaxed">Match the target signal by adjusting its underlying frequencies. Progress is tracked independently for each mode!</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
+            Fourier Rush
+          </h1>
+          <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+            Match the target signal by adjusting its underlying frequencies. 
+            Progress is tracked independently for each mode!
+          </p>
+          
           <div className="flex flex-wrap justify-center gap-4 py-2">
-             <button onClick={() => setMode('real')} className={`px-6 py-2 rounded-full font-bold transition-all border ${mode === 'real' ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}>Sin/Cos Mode</button>
-             <button onClick={() => setMode('complex')} className={`px-6 py-2 rounded-full font-bold transition-all border ${mode === 'complex' ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}>Complex Mode</button>
+             <button onClick={() => setMode('real')} className={`px-6 py-2 rounded-full font-bold transition-all border ${mode === 'real' ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}>
+               Sin/Cos Mode
+             </button>
+             <button onClick={() => setMode('complex')} className={`px-6 py-2 rounded-full font-bold transition-all border ${mode === 'complex' ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}>
+               Complex Mode
+             </button>
           </div>
-          <button onClick={() => setHasStarted(true)} className="group relative inline-flex items-center justify-center px-10 py-4 font-bold text-slate-950 bg-slate-200 rounded-full hover:scale-105 transition-all shadow-xl mt-4"><Play className="w-5 h-5 mr-2 fill-current" />Start Puzzle</button>
+
+          <button 
+            onClick={() => setHasStarted(true)}
+            className="group relative inline-flex items-center justify-center px-10 py-4 font-bold text-slate-950 bg-slate-200 rounded-full hover:scale-105 transition-all shadow-xl mt-4"
+          >
+            <Play className="w-5 h-5 mr-2 fill-current" />
+            Start Puzzle
+          </button>
         </div>
       </div>
     );
   }
 
+  // FIX: Safe fallback for activeKey
   const activeKey = activeKeys[activeTermIndex] || activeKeys[0];
   const activeCoeff = (playerCoeffs[mode] || {})[activeKey] || (mode === 'complex' ? { r: 0, i: 0 } : 0);
 
   return (
     <div className="fixed inset-0 bg-slate-950 text-slate-200 flex flex-col font-sans overflow-hidden">
+      
       <header className="flex-none flex justify-between items-center px-3 py-2 bg-slate-900 border-b border-slate-800 safe-top z-10">
         <div className="flex bg-slate-950 p-1 rounded-full border border-slate-800 shadow-inner">
           <button onClick={() => setMode('real')} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${mode === 'real' ? 'bg-cyan-500 text-slate-950' : 'text-slate-500 hover:text-slate-300'}`}>Sin/Cos</button>
           <button onClick={() => setMode('complex')} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${mode === 'complex' ? 'bg-emerald-500 text-slate-950' : 'text-slate-500 hover:text-slate-300'}`}>Complex</button>
         </div>
+        
         <div className="flex gap-2 items-center">
           <button onClick={() => setIsLevelSelectorOpen(true)} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 px-3 py-1 md:py-1.5 rounded-full border border-slate-700 transition-colors shadow-inner active:scale-95 text-sm">
             <Trophy className="w-3.5 h-3.5 text-yellow-400" />
@@ -426,6 +487,18 @@ export default function App() {
         </div>
       </header>
 
+      <div className="flex-none w-full flex justify-between items-center px-3 py-1.5 bg-slate-950 border-b border-slate-900 shadow-sm z-10">
+        <div className="flex items-center gap-2 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 text-[10px] md:text-xs shadow-inner">
+          <div className="flex items-center gap-1"><div className="w-3 h-0.5 bg-rose-500 border-t border-dashed border-rose-500"></div><span className="text-slate-300 font-semibold tracking-wide">Target</span></div>
+          <div className="w-[1px] h-3 bg-slate-700"></div>
+          <div className="flex items-center gap-1"><div className="w-3 h-0.5 bg-emerald-400"></div><span className="text-slate-300 font-semibold tracking-wide">Trace</span></div>
+        </div>
+        <div className="flex items-center gap-2 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 shadow-inner">
+          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Error:</span>
+          <div className={`text-sm md:text-base font-mono font-black w-10 text-right ${getErrorColor(errorNorm)}`}>{errorNorm.toFixed(2)}</div>
+        </div>
+      </div>
+
       <main className="flex-1 relative flex flex-col min-h-0 bg-slate-950 p-2 md:p-4">
         <div className="flex-1 w-full relative pointer-events-none min-h-0 flex items-center justify-center">
           <svg viewBox={`0 0 ${GRAPH_SIZE} ${GRAPH_SIZE}`} className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet">
@@ -433,7 +506,6 @@ export default function App() {
               <>
                 <line x1={0} y1={CENTER} x2={GRAPH_SIZE} y2={CENTER} stroke="#334155" strokeWidth="2" />
                 <line x1={CENTER} y1={0} x2={CENTER} y2={GRAPH_SIZE} stroke="#334155" strokeWidth="2" />
-                <circle cx={CENTER} cy={CENTER} r="4" fill="#334155" />
               </>
             ) : (
               <>
@@ -450,44 +522,58 @@ export default function App() {
             </g>
           </svg>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-lg mt-2 p-2 text-center text-xs md:text-sm font-mono text-emerald-300 shadow-md z-10">{renderEquation()}</div>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg mt-2 p-2 text-center text-xs md:text-sm font-mono text-emerald-300 shadow-md z-10 flex items-center justify-center">{renderEquation()}</div>
       </main>
 
       <section className="flex-none bg-slate-900 border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col pt-2 pb-4" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {showNext ? (
-          <div className="text-center p-6"><h2 className="text-xl font-black text-emerald-400">Perfect Match!</h2><button onClick={handleNextLevel} className="mt-4 px-6 py-3 bg-emerald-500 rounded-xl font-bold">Start Level {activeLevel + 1}</button></div>
+          <div className="flex flex-col items-center justify-center px-4 py-6 animate-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-xl font-black text-emerald-400 mb-2">Perfect Match!</h2>
+            <button onClick={handleNextLevel} className="px-6 py-3 bg-emerald-500 text-slate-950 font-black rounded-xl">Start Level {activeLevel + 1} <ArrowRight className="inline ml-2 w-5 h-5" /></button>
+          </div>
         ) : (
           <div className="flex flex-col px-3 md:px-8 max-w-lg mx-auto w-full">
             <div className="flex justify-between items-center mb-3">
-              <button onClick={prevTerm} disabled={activeTermIndex === 0} className="p-2 bg-slate-800 rounded-full text-white"><ChevronLeft className="w-5 h-5" /></button>
+              <button onClick={prevTerm} disabled={activeTermIndex === 0} className="p-2 bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 active:scale-95"><ChevronLeft className="w-5 h-5" /></button>
               <div className="text-center flex-1">{getTermLabel(activeKey)}</div>
-              <button onClick={nextTerm} disabled={activeTermIndex === activeKeys.length - 1} className="p-2 bg-slate-800 rounded-full text-white"><ChevronRight className="w-5 h-5" /></button>
+              <button onClick={nextTerm} disabled={activeTermIndex === activeKeys.length - 1} className="p-2 bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 active:scale-95"><ChevronRight className="w-5 h-5" /></button>
             </div>
-            {/* [Coefficients UI remains the same] */}
             {mode === 'complex' ? (
               <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center bg-slate-800 p-2 rounded-xl">
-                  <button onClick={() => stepValue('r', -1)}><Minus /></button>
-                  <span className="font-mono">{activeCoeff.r.toFixed(1)}</span>
-                  <button onClick={() => stepValue('r', 1)}><Plus /></button>
+                <div className="flex justify-between items-center bg-slate-800 p-2 rounded-xl border border-slate-700">
+                  <button onClick={() => stepValue('r', -1)}><Minus className="text-rose-400" /></button>
+                  <span className="font-mono text-xl">{activeCoeff.r.toFixed(1)}</span>
+                  <button onClick={() => stepValue('r', 1)}><Plus className="text-emerald-400" /></button>
                 </div>
-                <div className="flex justify-between items-center bg-slate-800 p-2 rounded-xl">
-                  <button onClick={() => stepValue('i', -1)}><Minus /></button>
-                  <span className="font-mono">{activeCoeff.i.toFixed(1)}i</span>
-                  <button onClick={() => stepValue('i', 1)}><Plus /></button>
+                <div className="flex justify-between items-center bg-slate-800 p-2 rounded-xl border border-slate-700">
+                  <button onClick={() => stepValue('i', -1)}><Minus className="text-rose-400" /></button>
+                  <span className="font-mono text-xl">{activeCoeff.i.toFixed(1)}i</span>
+                  <button onClick={() => stepValue('i', 1)}><Plus className="text-emerald-400" /></button>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl">
-                <button onClick={() => stepValue('val', -1)}><Minus /></button>
-                <span className="font-mono text-2xl">{activeCoeff.toFixed(1)}</span>
-                <button onClick={() => stepValue('val', 1)}><Plus /></button>
+              <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <button onClick={() => stepValue('val', -1)}><Minus className="text-rose-400" /></button>
+                <span className="font-mono text-3xl">{activeCoeff.toFixed(1)}</span>
+                <button onClick={() => stepValue('val', 1)}><Plus className="text-emerald-400" /></button>
               </div>
             )}
           </div>
         )}
       </section>
+
+      {isLevelSelectorOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md shadow-2xl p-5">
+            <div className="flex justify-between mb-4"><h2 className="font-bold text-lg">Select Level</h2><button onClick={() => setIsLevelSelectorOpen(false)}><X /></button></div>
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({ length: 20 }, (_, i) => i + 1).map(l => (
+                <button key={l} disabled={l > maxUnlocked} onClick={() => { setLevels(prev => ({ ...prev, [mode]: l })); initMode(mode, l); setIsLevelSelectorOpen(false); }} className={`p-3 rounded-lg ${l === activeLevel ? 'bg-emerald-500 text-black' : l <= maxUnlocked ? 'bg-slate-800' : 'bg-slate-900 opacity-50'}`}>{l}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
