@@ -101,15 +101,26 @@ export default function App() {
   }, [mode]);
 
   // Initialize both modes on first load
+  // --- ADD THE SAVING EFFECT HERE ---
   useEffect(() => {
-    initMode('real', 1);
-    initMode('complex', 1);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    localStorage.setItem('fourier_levels', JSON.stringify(levels));
+    localStorage.setItem('fourier_max_unlocked', JSON.stringify(maxUnlockedLevels));
+  }, [levels, maxUnlockedLevels]);
 
-  // Reset active term to 0 when swapping modes to prevent out-of-bounds selection
+  // --- MODIFY YOUR EXISTING INITIALIZATION EFFECT HERE ---
   useEffect(() => {
-    setActiveTermIndex(0);
-  }, [mode]);
+    const savedLevels = localStorage.getItem('fourier_levels');
+    const savedMax = localStorage.getItem('fourier_max_unlocked');
+
+    const initialLevels = savedLevels ? JSON.parse(savedLevels) : { real: 1, complex: 1 };
+    const initialMax = savedMax ? JSON.parse(savedMax) : { real: 1, complex: 1 };
+
+    setLevels(initialLevels);
+    setMaxUnlockedLevels(initialMax);
+
+    initMode('real', initialLevels.real);
+    initMode('complex', initialLevels.complex);
+  }, []); 
 
   // Calculate Error Norm for the ACTIVE mode
   const errorNorm = useMemo(() => {
