@@ -439,8 +439,7 @@ export default function App() {
             Fourier Rush
           </h1>
           <p className="text-slate-400 text-base md:text-lg leading-relaxed">
-            Match the target signal by adjusting its underlying frequencies. 
-            Progress is tracked independently for each mode!
+            Match the target signal by adjusting its underlying frequencies.
           </p>
           
           <div className="flex flex-wrap justify-center gap-4 py-2">
