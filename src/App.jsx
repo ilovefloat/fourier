@@ -400,7 +400,6 @@ export default function App() {
           </h1>
           <p className="text-slate-400 text-base md:text-lg leading-relaxed">
             Match the target signal by adjusting its underlying frequencies. 
-            Progress is tracked independently for each mode!
           </p>
           <div className="flex flex-wrap justify-center gap-4 py-2">
              <button onClick={() => setMode('real')} className={`px-6 py-2 rounded-full font-bold transition-all border ${mode === 'real' ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}>
