@@ -413,35 +413,36 @@ export default function App() {
     }
   };
 
-  const renderEquation = () => {
-    let parts = [];
-    const coeffs = playerCoeffs[mode] || {};
-    
+      const renderEquation = () => {
     if (mode === 'complex') {
-      for (const n of activeKeys) {
-        const c = coeffs[n];
-        if (!c || (c.r === 0 && c.i === 0)) continue;
-        const cStr = formatComplex(c);
-        if (n === 0) parts.push(`(${cStr})`);
-        else parts.push(`(${cStr})e^{i${n === 1 ? '' : n === -1 ? '-' : n}t}`);
-      }
+      const N = Math.ceil(activeLevel / 2);
+      return (
+        <div className="flex items-center gap-1 text-emerald-300">
+          <span className="font-serif italic">f(t) = </span>
+          <span className="text-2xl relative top-0.5">Σ</span>
+          <div className="flex flex-col text-[8px] leading-[0.8] items-start">
+            <span>n={N}</span>
+            <span>n=-{N}</span>
+          </div>
+          <span className="ml-1">c<sub>n</sub> e<sup>int</sup></span>
+        </div>
+      );
     } else {
-      if (coeffs.a0 !== 0 && coeffs.a0 !== undefined) parts.push(coeffs.a0.toFixed(1));
-      for (let i = 1; i <= activeLevel; i++) {
-        const a = coeffs[`a${i}`];
-        const b = coeffs[`b${i}`];
-        if (a !== 0 && a !== undefined) {
-          const sign = a > 0 ? (parts.length ? '+ ' : '') : '- ';
-          parts.push(`${sign}${Math.abs(a).toFixed(1)}cos(${i === 1 ? 't' : i + 't'})`);
-        }
-        if (b !== 0 && b !== undefined) {
-          const sign = b > 0 ? (parts.length ? '+ ' : '') : '- ';
-          parts.push(`${sign}${Math.abs(b).toFixed(1)}sin(${i === 1 ? 't' : i + 't'})`);
-        }
-      }
+      return (
+        <div className="flex items-center gap-1 text-emerald-300">
+          <span className="font-serif italic">f(t) = a<sub>0</sub> + </span>
+          <span className="text-2xl relative top-0.5">Σ</span>
+          <div className="flex flex-col text-[8px] leading-[0.8] items-start">
+            <span>n={activeLevel}</span>
+            <span>n=1</span>
+          </div>
+          <span className="ml-1">(a<sub>n</sub> cos(nt) + b<sub>n</sub> sin(nt))</span>
+        </div>
+      );
     }
-    return parts.length === 0 ? "0" : parts.join(" ");
   };
+
+
 
   const getErrorColor = (err) => {
     if (err < 0.05) return 'text-emerald-400';
@@ -600,9 +601,10 @@ export default function App() {
         </div>
 
         {/* Equation Display */}
-        <div className="bg-slate-900 border border-slate-800 rounded-lg mt-2 p-1.5 text-center text-xs md:text-sm font-mono text-emerald-300 shadow-md z-10 pointer-events-none overflow-x-auto whitespace-nowrap custom-scrollbar flex-shrink-0 h-8 md:h-10 flex items-center justify-center">
-          f(t) = {renderEquation()}
-        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg mt-2 p-2 text-center text-xs md:text-sm font-mono text-emerald-300 shadow-md z-10 pointer-events-none overflow-x-auto whitespace-nowrap custom-scrollbar flex-shrink-0 min-h-[3rem] md:min-h-[4rem] flex items-center justify-center">
+  {renderEquation()}
+</div>
+
       </main>
 
       {/* Swipeable Controls Bottom Deck */}
