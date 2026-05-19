@@ -96,27 +96,36 @@ export default function App() {
     }
   }, [mode]);
 
-  // Initialize both modes on first load
-  // --- ADD THE SAVING EFFECT HERE ---
+    // --- INITIALIZATION AND PERSISTENCE ENGINE ---
+  
+  // 1. Load progress on startup
+  useEffect(() => {
+    const savedLevels = localStorage.getItem('fourier_levels');
+    const savedMax = localStorage.getItem('fourier_max_unlocked');
+
+    if (savedLevels && savedMax) {
+      const parsedLevels = JSON.parse(savedLevels);
+      const parsedMax = JSON.parse(savedMax);
+      
+      setLevels(parsedLevels);
+      setMaxUnlockedLevels(parsedMax);
+      
+      // Initialize both modes using the SAVED levels
+      initMode('real', parsedLevels.real);
+      initMode('complex', parsedLevels.complex);
+    } else {
+      // If nothing saved, initialize fresh at level 1
+      initMode('real', 1);
+      initMode('complex', 1);
+    }
+  }, []); 
+
+  // 2. Save progress whenever the level state updates
   useEffect(() => {
     localStorage.setItem('fourier_levels', JSON.stringify(levels));
     localStorage.setItem('fourier_max_unlocked', JSON.stringify(maxUnlockedLevels));
   }, [levels, maxUnlockedLevels]);
 
-  // --- MODIFY YOUR EXISTING INITIALIZATION EFFECT HERE ---
-  useEffect(() => {
-    const savedLevels = localStorage.getItem('fourier_levels');
-    const savedMax = localStorage.getItem('fourier_max_unlocked');
-
-    const initialLevels = savedLevels ? JSON.parse(savedLevels) : { real: 1, complex: 1 };
-    const initialMax = savedMax ? JSON.parse(savedMax) : { real: 1, complex: 1 };
-
-    setLevels(initialLevels);
-    setMaxUnlockedLevels(initialMax);
-
-    initMode('real', initialLevels.real);
-    initMode('complex', initialLevels.complex);
-  }, []); 
 
   // Calculate Error Norm for the ACTIVE mode
   const errorNorm = useMemo(() => {
