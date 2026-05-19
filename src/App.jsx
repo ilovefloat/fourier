@@ -398,7 +398,7 @@ export default function App() {
       if (key === 0) return <span className="text-cyan-400 font-mono tracking-wider text-base md:text-lg">c₀ (DC)</span>;
       return (
         <span className="text-amber-400 font-mono tracking-wider text-lg md:text-xl">
-          c<sub className="text-xs">{key}</sub> e<sup className="text-xs">i{key === 1 ? '' : key === -1 ? '-' : key}t</sup>
+          c<sub className="text-xs">{key}</sub> e<sup className="text-xs">{key === 1 ? '' : key === -1 ? '-' : key}it</sup>
         </span>
       );
     } else {
@@ -424,7 +424,7 @@ export default function App() {
             <span>n={N}</span>
             <span>n=-{N}</span>
           </div>
-          <span className="ml-1">c<sub>n</sub> e<sup>int</sup></span>
+          <span className="ml-1">c<sub>n</sub> e<sup>nit</sup></span>
         </div>
       );
     } else {
